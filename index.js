@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 const axios = require("axios");
-const dayjs = require("dayjs"); // Muy útil para las fechas
+const dayjs = require("dayjs");
 const dotenv = require("dotenv");
 const Table = require("cli-table3");
+const chalk = require("chalk");
 
 dotenv.config();
 
@@ -11,7 +12,7 @@ const { Command } = require("commander");
 const program = new Command();
 
 const getStartDate = (duration) => {
-  const now = dayjs(); // La fecha de hoy
+  const now = dayjs();
 
   switch (duration) {
     case "day":
@@ -37,22 +38,64 @@ program
     "week"
   )
   .option("-l, --limit <limit>", "Cantidad de repositorios a mostrar", "10")
+  .option("-t, --typeout <type_output>", "Tipo de salida: table, list", "table")
   .action((options) => {
-    fetchTrendingRepos(options.duration, options.limit);
+    fetchTrendingRepos(options.duration, options.limit, options.typeout);
   });
 
 program.parse(process.argv);
 
-async function fetchTrendingRepos(duration, limit) {
+async function tableOutput(items) {
   const table = new Table({
     head: ["#", "Nombre", "Descripción", "Lenguaje", "Stars", "URL"],
-    colWidths: [5, 20, 30, 10, 10, 80], // Ajusta los anchos según veas necesario
-    wordWrap: true, // Esto ayuda a que el texto largo baje de línea automáticamente
-    style: { head: ["cyan"], border: ["esmerald"] }, // Colores opcionales
+    colWidths: [5, 20, 30, 10, 10, 80],
+    wordWrap: true,
+    style: { head: ["cyan"], border: ["cyan"] },
   });
 
-  console.log(`Buscando ${limit} repositorios de la última ${duration}...`);
+  let counter = 1;
+  items.forEach((item) => {
+    table.push([
+      counter,
+      item.name,
+      item.description,
+      item.language,
+      item.stargazers_count,
+      item.html_url,
+    ]);
+    counter++;
+  });
+  console.log(table.toString());
+}
+
+async function listOutput(items) {
+  let counter = 1;
+  items.forEach((item) => {
+    console.log(
+      chalk.yellow(counter) +
+        " " +
+        chalk.bold.bgBlack(item.name) +
+        " " +
+        chalk.yellow("★ " + item.stargazers_count) +
+        " " +
+        chalk.cyan("■ " + item.language) +
+        " " +
+        chalk.white("| " + item.description) +
+        "\n"
+    );
+    console.log(chalk.white(item.html_url));
+    console.log("\n");
+    counter++;
+  });
+}
+
+async function fetchTrendingRepos(duration, limit, type_output) {
   const startDate = getStartDate(duration);
+  console.log(
+    chalk.bold.bgBlack(
+      `\n GitHub Trending CLI | Top ${limit} · ${startDate} \n`
+    )
+  );
   try {
     const response = await axios.get(
       `https://api.github.com/search/repositories?q=created:>=${startDate}&per_page=${limit}&sort=stars&order=desc`,
@@ -64,20 +107,23 @@ async function fetchTrendingRepos(duration, limit) {
     );
     const items = response.data.items;
 
-    let counter = 1;
-    items.forEach((item) => {
-      table.push([
-        counter,
-        item.name,
-        item.description,
-        item.language,
-        item.stargazers_count,
-        item.html_url,
-      ]);
-      counter++;
-    });
-    console.log(table.toString());
+    switch (type_output) {
+      case "table":
+        tableOutput(items);
+        break;
+      case "list":
+        listOutput(items);
+        break;
+      default:
+        console.warn(
+          chalk.yellow(
+            `Tipo de salida desconocido: "${type_output}". Usando "table" por defecto.`
+          )
+        );
+        tableOutput(items);
+        break;
+    }
   } catch (error) {
-    console.error("Error al buscar repositorios:", error);
+    console.error(chalk.red("Error al buscar repositorios:"), error.message);
   }
 }
