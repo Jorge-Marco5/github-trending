@@ -45,10 +45,10 @@ program.parse(process.argv);
 
 async function fetchTrendingRepos(duration, limit) {
   const table = new Table({
-    head: ["Nombre", "Descripción", "Lenguaje", "Stars", "URL"],
-    colWidths: [25, 40, 15, 10, 35], // Ajusta los anchos según veas necesario
+    head: ["#", "Nombre", "Descripción", "Lenguaje", "Stars", "URL"],
+    colWidths: [5, 20, 30, 10, 10, 80], // Ajusta los anchos según veas necesario
     wordWrap: true, // Esto ayuda a que el texto largo baje de línea automáticamente
-    style: { head: ["green"], border: ["grey"] }, // Colores opcionales
+    style: { head: ["cyan"], border: ["esmerald"] }, // Colores opcionales
   });
 
   console.log(`Buscando ${limit} repositorios de la última ${duration}...`);
@@ -64,14 +64,17 @@ async function fetchTrendingRepos(duration, limit) {
     );
     const items = response.data.items;
 
+    let counter = 1;
     items.forEach((item) => {
       table.push([
+        counter,
         item.name,
         item.description,
         item.language,
         item.stargazers_count,
         item.html_url,
       ]);
+      counter++;
     });
     console.log(table.toString());
   } catch (error) {
